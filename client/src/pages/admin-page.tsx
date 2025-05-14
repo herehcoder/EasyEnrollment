@@ -3,22 +3,54 @@ import { useLocation, useParams } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { School, LogOut, Search, PanelsTopLeft, Users, BookOpen, FileText, Settings } from "lucide-react";
+import {
+  School, LogOut, Search, PanelsTopLeft, Users, BookOpen, FileText, Settings,
+  Plus, Edit, Trash2, ChevronDown, Clock, Users2, LucideIcon
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Card, 
   CardContent, 
   CardHeader, 
   CardTitle,
-  CardDescription
+  CardDescription,
+  CardFooter
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Badge } from "@/components/ui/badge";
 import StudentDetailsModal from "@/components/student-details-modal";
 import FormCustomizer from "@/components/form-customizer";
-import { Student } from "@shared/schema";
+import { Student, Course, CourseShift, CourseModality, insertCourseSchema } from "@shared/schema";
 
 export default function AdminPage() {
   const { section } = useParams();
@@ -30,6 +62,12 @@ export default function AdminPage() {
   const [location, navigate] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
+  
+  // Course states
+  const [showCourseDialog, setShowCourseDialog] = useState(false);
+  const [courseEditMode, setCourseEditMode] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courseSearchQuery, setCourseSearchQuery] = useState("");
 
   const { data: students, isLoading: studentsLoading } = useQuery({
     queryKey: ["/api/students"],
@@ -44,6 +82,89 @@ export default function AdminPage() {
   const { data: documentRequirements, isLoading: documentRequirementsLoading } = useQuery({
     queryKey: ["/api/document-requirements"],
     staleTime: 60000,
+  });
+  
+  const { data: courses, isLoading: coursesLoading } = useQuery({
+    queryKey: ["/api/courses"],
+    staleTime: 60000,
+  });
+  
+  // CRUD mutations for courses
+  const createCourseMutation = useMutation({
+    mutationFn: async (courseData: any) => {
+      const res = await apiRequest("POST", "/api/admin/courses", courseData);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Erro ao criar curso");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      setShowCourseDialog(false);
+      toast({
+        title: "Sucesso",
+        description: "Curso criado com sucesso",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const updateCourseMutation = useMutation({
+    mutationFn: async ({ id, courseData }: { id: number, courseData: any }) => {
+      const res = await apiRequest("PUT", `/api/admin/courses/${id}`, courseData);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Erro ao atualizar curso");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      setShowCourseDialog(false);
+      toast({
+        title: "Sucesso",
+        description: "Curso atualizado com sucesso",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const deleteCourseMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/courses/${id}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Erro ao excluir curso");
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      toast({
+        title: "Sucesso",
+        description: "Curso excluído com sucesso",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   });
 
   useEffect(() => {
@@ -64,6 +185,25 @@ export default function AdminPage() {
   const handleViewStudent = (student: Student) => {
     setSelectedStudent(student);
     setShowStudentModal(true);
+  };
+  
+  // Course handlers
+  const handleAddCourse = () => {
+    setCourseEditMode(false);
+    setSelectedCourse(null);
+    setShowCourseDialog(true);
+  };
+  
+  const handleEditCourse = (course: Course) => {
+    setCourseEditMode(true);
+    setSelectedCourse(course);
+    setShowCourseDialog(true);
+  };
+  
+  const handleDeleteCourse = (id: number) => {
+    if (confirm("Tem certeza que deseja excluir este curso? Esta ação não pode ser desfeita.")) {
+      deleteCourseMutation.mutate(id);
+    }
   };
 
   const filteredStudents = students ? students.filter((student: Student) => 
