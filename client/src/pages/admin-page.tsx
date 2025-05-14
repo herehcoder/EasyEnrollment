@@ -351,6 +351,144 @@ export default function AdminPage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
+          {currentSection === "documents" && (
+            <>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-800">Gerenciamento de Documentos</h2>
+                <p className="text-gray-600 text-sm">Visualize e gerencie documentos carregados pelos alunos.</p>
+              </div>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Documentos Enviados</CardTitle>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input 
+                        type="text" 
+                        placeholder="Buscar documentos..." 
+                        className="pl-10 pr-4 py-2 w-full text-sm"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {studentsLoading ? (
+                    <div className="py-10 text-center">
+                      <div className="animate-spin inline-block w-6 h-6 border-2 border-current border-t-transparent text-primary rounded-full" aria-hidden="true"></div>
+                      <p className="mt-2 text-gray-500">Carregando documentos...</p>
+                    </div>
+                  ) : students && students.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aluno</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documentos</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Envio</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredStudents.map((student: Student) => (
+                            <tr key={student.id}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <span className="text-gray-600 font-semibold">{student.fullName.charAt(0)}</span>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
+                                    <div className="text-sm text-gray-500">{student.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex space-x-1">
+                                  <Badge variant="outline" className="bg-blue-50">
+                                    RG/CPF
+                                  </Badge>
+                                  <Badge variant="outline" className="bg-green-50">
+                                    Comprovante de Residência
+                                  </Badge>
+                                  {student.documentsCount > 2 && (
+                                    <Badge variant="outline" className="bg-purple-50">
+                                      +{student.documentsCount - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {new Date(student.registrationDate).toLocaleDateString('pt-BR')}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  student.status === 'approved' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : student.status === 'pending'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {student.status === 'approved' 
+                                    ? 'Aprovados' 
+                                    : student.status === 'pending'
+                                    ? 'Pendentes'
+                                    : 'Reprovados'
+                                  }
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleViewStudent(student)}
+                                >
+                                  Ver Documentos
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center">
+                      <FileText className="h-10 w-10 mx-auto text-gray-400" />
+                      <p className="mt-2 text-gray-500">Nenhum documento enviado ainda.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="mt-8">
+                <h3 className="text-lg font-medium text-gray-800 mb-4">Requisitos de Documentos</h3>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Configurar Requisitos de Documentos</CardTitle>
+                    <CardDescription>
+                      Defina quais documentos são necessários para o processo de matrícula.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {documentRequirementsLoading ? (
+                      <div className="py-4 text-center">Carregando requisitos de documentos...</div>
+                    ) : (
+                      <FormCustomizer 
+                        type="documentRequirements" 
+                        items={documentRequirements || []} 
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+          
           {currentSection === "courses" && (
             <>
               <div className="flex justify-between items-center mb-6">
