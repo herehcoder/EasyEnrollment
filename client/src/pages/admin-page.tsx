@@ -351,6 +351,127 @@ export default function AdminPage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
+          {currentSection === "courses" && (
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">Gerenciamento de Cursos</h2>
+                  <p className="text-gray-600 text-sm">Adicione, edite ou remova cursos disponíveis para matrícula.</p>
+                </div>
+                <Button onClick={handleAddCourse} className="bg-primary">
+                  <Plus className="mr-2 h-4 w-4" /> Adicionar Curso
+                </Button>
+              </div>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Lista de Cursos</CardTitle>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input 
+                        type="text" 
+                        placeholder="Buscar cursos..." 
+                        className="pl-10 pr-4 py-2 w-full text-sm"
+                        value={courseSearchQuery}
+                        onChange={(e) => setCourseSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {coursesLoading ? (
+                    <div className="py-10 text-center">
+                      <div className="animate-spin inline-block w-6 h-6 border-2 border-current border-t-transparent text-primary rounded-full" aria-hidden="true"></div>
+                      <p className="mt-2 text-gray-500">Carregando cursos...</p>
+                    </div>
+                  ) : courses && courses.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome do Curso</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duração</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coordenador</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {courses
+                            .filter((course: Course) => 
+                              course.name.toLowerCase().includes(courseSearchQuery.toLowerCase()) ||
+                              course.code.toLowerCase().includes(courseSearchQuery.toLowerCase()) ||
+                              (course.coordinator && course.coordinator.toLowerCase().includes(courseSearchQuery.toLowerCase()))
+                            )
+                            .map((course: Course) => (
+                              <tr key={course.id}>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">{course.name}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-500">{course.code}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-500">{course.duration} meses</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-500">{course.coordinator || '-'}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-500">
+                                    {course.price 
+                                      ? `R$ ${parseFloat(course.price.toString()).toFixed(2).replace('.', ',')}`
+                                      : '-'
+                                    }
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <Badge 
+                                    className={`${course.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                                  >
+                                    {course.active ? 'Ativo' : 'Inativo'}
+                                  </Badge>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm">
+                                        <ChevronDown className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => handleEditCourse(course)}>
+                                        <Edit className="h-4 w-4 mr-2" /> Editar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDeleteCourse(course.id)}>
+                                        <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </td>
+                              </tr>
+                            ))
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center">
+                      <BookOpen className="h-10 w-10 mx-auto text-gray-400" />
+                      <p className="mt-2 text-gray-500">Nenhum curso encontrado.</p>
+                      <Button onClick={handleAddCourse} variant="outline" className="mt-4">
+                        <Plus className="mr-2 h-4 w-4" /> Adicionar o primeiro curso
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+          
           {currentSection === "dashboard" && (
             <>
               <div className="mb-6">
@@ -718,6 +839,205 @@ export default function AdminPage() {
           onClose={() => setShowStudentModal(false)} 
         />
       )}
+      
+      {/* Course Dialog */}
+      <Dialog open={showCourseDialog} onOpenChange={setShowCourseDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{courseEditMode ? "Editar Curso" : "Adicionar Novo Curso"}</DialogTitle>
+            <DialogDescription>
+              {courseEditMode 
+                ? "Atualize as informações do curso nos campos abaixo."
+                : "Preencha os detalhes do novo curso que será disponibilizado para matrícula."
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <CourseForm 
+            course={selectedCourse}
+            mode={courseEditMode ? "edit" : "create"}
+            onSubmit={(data) => {
+              if (courseEditMode && selectedCourse) {
+                updateCourseMutation.mutate({
+                  id: selectedCourse.id,
+                  courseData: data
+                });
+              } else {
+                createCourseMutation.mutate(data);
+              }
+            }}
+            isPending={createCourseMutation.isPending || updateCourseMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function CourseForm({ 
+  course, 
+  mode, 
+  onSubmit, 
+  isPending 
+}: { 
+  course: Course | null;
+  mode: "create" | "edit";
+  onSubmit: (data: any) => void;
+  isPending: boolean;
+}) {
+  const form = useForm({
+    resolver: zodResolver(insertCourseSchema),
+    defaultValues: {
+      name: course?.name || "",
+      code: course?.code || "",
+      description: course?.description || "",
+      duration: course?.duration || 6,
+      coordinator: course?.coordinator || "",
+      price: course?.price ? parseFloat(course.price.toString()) : undefined,
+      active: course?.active !== undefined ? course.active : true,
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome do Curso</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Ex: Administração" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="code"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Código</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Ex: ADM" />
+              </FormControl>
+              <FormDescription>
+                Um código único para identificar o curso
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="duration"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Duração (meses)</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field}
+                    type="number" 
+                    min={1}
+                    onChange={e => field.onChange(parseInt(e.target.value || "0"))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Preço Mensal (R$)</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field}
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    placeholder="Ex: 999.90"
+                    onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        
+        <FormField
+          control={form.control}
+          name="coordinator"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Coordenador</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Ex: Prof. Dr. Roberto Silva" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descrição</FormLabel>
+              <FormControl>
+                <textarea
+                  {...field}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Descreva detalhes sobre o curso..."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="active"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 mt-1"
+                  checked={field.value}
+                  onChange={e => field.onChange(e.target.checked)}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Curso Ativo</FormLabel>
+                <FormDescription>
+                  Cursos ativos são exibidos no processo de matrícula.
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+        
+        <DialogFooter>
+          <Button type="submit" disabled={isPending}>
+            {isPending && (
+              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+            )}
+            {mode === "create" ? "Adicionar Curso" : "Salvar Alterações"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 }
