@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -108,6 +108,49 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   timestamp: true,
 });
 
+export const courses = pgTable("courses", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  duration: integer("duration").notNull(), // in months
+  coordinator: text("coordinator"),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCourseSchema = createInsertSchema(courses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const courseShifts = pgTable("course_shifts", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").notNull(),
+  name: text("name").notNull(), // "morning", "afternoon", "evening"
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  weekdays: text("weekdays"), // "mon,tue,wed,thu,fri"
+  active: boolean("active").default(true).notNull(),
+});
+
+export const insertCourseShiftSchema = createInsertSchema(courseShifts).omit({
+  id: true,
+});
+
+export const courseModalities = pgTable("course_modalities", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").notNull(),
+  name: text("name").notNull(), // "in-person", "hybrid", "online"
+  description: text("description"),
+  active: boolean("active").default(true).notNull(),
+});
+
+export const insertCourseModalitySchema = createInsertSchema(courseModalities).omit({
+  id: true,
+});
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -126,3 +169,12 @@ export type InsertDocumentRequirement = z.infer<typeof insertDocumentRequirement
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+
+export type Course = typeof courses.$inferSelect;
+export type InsertCourse = z.infer<typeof insertCourseSchema>;
+
+export type CourseShift = typeof courseShifts.$inferSelect;
+export type InsertCourseShift = z.infer<typeof insertCourseShiftSchema>;
+
+export type CourseModality = typeof courseModalities.$inferSelect;
+export type InsertCourseModality = z.infer<typeof insertCourseModalitySchema>;

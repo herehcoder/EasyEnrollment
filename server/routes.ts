@@ -2,7 +2,16 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertStudentSchema, insertDocumentSchema, insertFormFieldSchema, insertDocumentRequirementSchema, insertChatMessageSchema } from "@shared/schema";
+import { 
+  insertStudentSchema, 
+  insertDocumentSchema, 
+  insertFormFieldSchema, 
+  insertDocumentRequirementSchema, 
+  insertChatMessageSchema,
+  insertCourseSchema,
+  insertCourseShiftSchema,
+  insertCourseModalitySchema
+} from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -234,6 +243,247 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const existingRequirements = await storage.getAllDocumentRequirements();
   if (existingRequirements.length === 0) {
     await storage.seedDefaultDocumentRequirements();
+  }
+  
+  // API routes for courses
+  app.get("/api/courses", async (req, res) => {
+    try {
+      const courses = await storage.getAllCourses();
+      res.json(courses);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar cursos" });
+    }
+  });
+  
+  app.get("/api/courses/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      const course = await storage.getCourse(id);
+      if (!course) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      
+      res.json(course);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar curso" });
+    }
+  });
+  
+  app.post("/api/admin/courses", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const validatedData = insertCourseSchema.parse(req.body);
+      const course = await storage.createCourse(validatedData);
+      res.status(201).json(course);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Erro na validação dos dados" });
+    }
+  });
+  
+  app.put("/api/admin/courses/:id", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      const validatedData = insertCourseSchema.parse(req.body);
+      const updatedCourse = await storage.updateCourse(id, validatedData);
+      
+      if (!updatedCourse) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      
+      res.json(updatedCourse);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Erro na validação dos dados" });
+    }
+  });
+  
+  app.delete("/api/admin/courses/:id", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      await storage.deleteCourse(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao excluir curso" });
+    }
+  });
+  
+  // API routes for course shifts
+  app.get("/api/courses/:id/shifts", async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.id);
+      if (isNaN(courseId)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      const shifts = await storage.getCourseShiftsByCourseId(courseId);
+      res.json(shifts);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar turnos" });
+    }
+  });
+  
+  app.post("/api/admin/course-shifts", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const validatedData = insertCourseShiftSchema.parse(req.body);
+      const shift = await storage.createCourseShift(validatedData);
+      res.status(201).json(shift);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Erro na validação dos dados" });
+    }
+  });
+  
+  app.put("/api/admin/course-shifts/:id", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      const validatedData = insertCourseShiftSchema.parse(req.body);
+      const updatedShift = await storage.updateCourseShift(id, validatedData);
+      
+      if (!updatedShift) {
+        return res.status(404).json({ message: "Turno não encontrado" });
+      }
+      
+      res.json(updatedShift);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Erro na validação dos dados" });
+    }
+  });
+  
+  app.delete("/api/admin/course-shifts/:id", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      await storage.deleteCourseShift(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao excluir turno" });
+    }
+  });
+  
+  // API routes for course modalities
+  app.get("/api/courses/:id/modalities", async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.id);
+      if (isNaN(courseId)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      const modalities = await storage.getCourseModalitiesByCourseId(courseId);
+      res.json(modalities);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar modalidades" });
+    }
+  });
+  
+  app.post("/api/admin/course-modalities", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const validatedData = insertCourseModalitySchema.parse(req.body);
+      const modality = await storage.createCourseModality(validatedData);
+      res.status(201).json(modality);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Erro na validação dos dados" });
+    }
+  });
+  
+  app.put("/api/admin/course-modalities/:id", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      const validatedData = insertCourseModalitySchema.parse(req.body);
+      const updatedModality = await storage.updateCourseModality(id, validatedData);
+      
+      if (!updatedModality) {
+        return res.status(404).json({ message: "Modalidade não encontrada" });
+      }
+      
+      res.json(updatedModality);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Erro na validação dos dados" });
+    }
+  });
+  
+  app.delete("/api/admin/course-modalities/:id", async (req, res) => {
+    try {
+      // Ensure user is admin
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Acesso não autorizado" });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID inválido" });
+      }
+      
+      await storage.deleteCourseModality(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao excluir modalidade" });
+    }
+  });
+  
+  // Initialize default courses if none exist
+  const existingCourses = await storage.getAllCourses();
+  if (existingCourses.length === 0) {
+    await storage.seedDefaultCourses();
   }
 
   const httpServer = createServer(app);

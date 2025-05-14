@@ -1,11 +1,17 @@
-import { users, students, documents, formFields, documentRequirements, chatMessages } from "@shared/schema";
+import { 
+  users, students, documents, formFields, documentRequirements, chatMessages,
+  courses, courseShifts, courseModalities
+} from "@shared/schema";
 import type {
   User, InsertUser,
   Student, InsertStudent,
   Document, InsertDocument,
   FormField, InsertFormField,
   DocumentRequirement, InsertDocumentRequirement,
-  ChatMessage, InsertChatMessage
+  ChatMessage, InsertChatMessage,
+  Course, InsertCourse,
+  CourseShift, InsertCourseShift,
+  CourseModality, InsertCourseModality
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -52,6 +58,28 @@ export interface IStorage {
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   getChatMessage(id: number): Promise<ChatMessage | undefined>;
   getChatMessagesByStudentId(studentId: number): Promise<ChatMessage[]>;
+  
+  // Course methods
+  createCourse(course: InsertCourse): Promise<Course>;
+  getCourse(id: number): Promise<Course | undefined>;
+  getAllCourses(): Promise<Course[]>;
+  updateCourse(id: number, course: Partial<Course>): Promise<Course | undefined>;
+  deleteCourse(id: number): Promise<void>;
+  
+  // Course shift methods
+  createCourseShift(shift: InsertCourseShift): Promise<CourseShift>;
+  getCourseShift(id: number): Promise<CourseShift | undefined>;
+  getCourseShiftsByCourseId(courseId: number): Promise<CourseShift[]>;
+  updateCourseShift(id: number, shift: Partial<CourseShift>): Promise<CourseShift | undefined>;
+  deleteCourseShift(id: number): Promise<void>;
+  
+  // Course modality methods
+  createCourseModality(modality: InsertCourseModality): Promise<CourseModality>;
+  getCourseModality(id: number): Promise<CourseModality | undefined>;
+  getCourseModalitiesByCourseId(courseId: number): Promise<CourseModality[]>;
+  updateCourseModality(id: number, modality: Partial<CourseModality>): Promise<CourseModality | undefined>;
+  deleteCourseModality(id: number): Promise<void>;
+  seedDefaultCourses(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -61,6 +89,9 @@ export class MemStorage implements IStorage {
   private formFields: Map<number, FormField>;
   private documentRequirements: Map<number, DocumentRequirement>;
   private chatMessages: Map<number, ChatMessage>;
+  private courses: Map<number, Course>;
+  private courseShifts: Map<number, CourseShift>;
+  private courseModalities: Map<number, CourseModality>;
   
   sessionStore: session.SessionStore;
   private userIdCounter: number;
@@ -69,6 +100,9 @@ export class MemStorage implements IStorage {
   private formFieldIdCounter: number;
   private documentRequirementIdCounter: number;
   private chatMessageIdCounter: number;
+  private courseIdCounter: number;
+  private courseShiftIdCounter: number;
+  private courseModalityIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -77,6 +111,9 @@ export class MemStorage implements IStorage {
     this.formFields = new Map();
     this.documentRequirements = new Map();
     this.chatMessages = new Map();
+    this.courses = new Map();
+    this.courseShifts = new Map();
+    this.courseModalities = new Map();
     
     this.userIdCounter = 1;
     this.studentIdCounter = 1;
@@ -84,6 +121,9 @@ export class MemStorage implements IStorage {
     this.formFieldIdCounter = 1;
     this.documentRequirementIdCounter = 1;
     this.chatMessageIdCounter = 1;
+    this.courseIdCounter = 1;
+    this.courseShiftIdCounter = 1;
+    this.courseModalityIdCounter = 1;
     
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // 24 hours
@@ -314,6 +354,219 @@ export class MemStorage implements IStorage {
     return Array.from(this.chatMessages.values())
       .filter(msg => msg.studentId === studentId)
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  }
+
+  // Course methods
+  async createCourse(course: InsertCourse): Promise<Course> {
+    const id = this.courseIdCounter++;
+    const now = new Date();
+    
+    const newCourse: Course = {
+      id,
+      ...course,
+      createdAt: now
+    };
+    
+    this.courses.set(id, newCourse);
+    return newCourse;
+  }
+
+  async getCourse(id: number): Promise<Course | undefined> {
+    return this.courses.get(id);
+  }
+
+  async getAllCourses(): Promise<Course[]> {
+    return Array.from(this.courses.values());
+  }
+
+  async updateCourse(id: number, courseData: Partial<Course>): Promise<Course | undefined> {
+    const existingCourse = this.courses.get(id);
+    if (!existingCourse) return undefined;
+    
+    const updatedCourse: Course = {
+      ...existingCourse,
+      ...courseData
+    };
+    
+    this.courses.set(id, updatedCourse);
+    return updatedCourse;
+  }
+
+  async deleteCourse(id: number): Promise<void> {
+    this.courses.delete(id);
+    
+    // Also delete related shifts and modalities
+    const shiftsToDelete = Array.from(this.courseShifts.values())
+      .filter(shift => shift.courseId === id)
+      .map(shift => shift.id);
+    
+    for (const shiftId of shiftsToDelete) {
+      this.courseShifts.delete(shiftId);
+    }
+    
+    const modalitiesToDelete = Array.from(this.courseModalities.values())
+      .filter(modality => modality.courseId === id)
+      .map(modality => modality.id);
+    
+    for (const modalityId of modalitiesToDelete) {
+      this.courseModalities.delete(modalityId);
+    }
+  }
+
+  // Course shift methods
+  async createCourseShift(shift: InsertCourseShift): Promise<CourseShift> {
+    const id = this.courseShiftIdCounter++;
+    
+    const newShift: CourseShift = {
+      id,
+      ...shift
+    };
+    
+    this.courseShifts.set(id, newShift);
+    return newShift;
+  }
+
+  async getCourseShift(id: number): Promise<CourseShift | undefined> {
+    return this.courseShifts.get(id);
+  }
+
+  async getCourseShiftsByCourseId(courseId: number): Promise<CourseShift[]> {
+    return Array.from(this.courseShifts.values())
+      .filter(shift => shift.courseId === courseId);
+  }
+
+  async updateCourseShift(id: number, shiftData: Partial<CourseShift>): Promise<CourseShift | undefined> {
+    const existingShift = this.courseShifts.get(id);
+    if (!existingShift) return undefined;
+    
+    const updatedShift: CourseShift = {
+      ...existingShift,
+      ...shiftData
+    };
+    
+    this.courseShifts.set(id, updatedShift);
+    return updatedShift;
+  }
+
+  async deleteCourseShift(id: number): Promise<void> {
+    this.courseShifts.delete(id);
+  }
+
+  // Course modality methods
+  async createCourseModality(modality: InsertCourseModality): Promise<CourseModality> {
+    const id = this.courseModalityIdCounter++;
+    
+    const newModality: CourseModality = {
+      id,
+      ...modality
+    };
+    
+    this.courseModalities.set(id, newModality);
+    return newModality;
+  }
+
+  async getCourseModality(id: number): Promise<CourseModality | undefined> {
+    return this.courseModalities.get(id);
+  }
+
+  async getCourseModalitiesByCourseId(courseId: number): Promise<CourseModality[]> {
+    return Array.from(this.courseModalities.values())
+      .filter(modality => modality.courseId === courseId);
+  }
+
+  async updateCourseModality(id: number, modalityData: Partial<CourseModality>): Promise<CourseModality | undefined> {
+    const existingModality = this.courseModalities.get(id);
+    if (!existingModality) return undefined;
+    
+    const updatedModality: CourseModality = {
+      ...existingModality,
+      ...modalityData
+    };
+    
+    this.courseModalities.set(id, updatedModality);
+    return updatedModality;
+  }
+
+  async deleteCourseModality(id: number): Promise<void> {
+    this.courseModalities.delete(id);
+  }
+  
+  // Seed default courses
+  async seedDefaultCourses(): Promise<void> {
+    // Default courses
+    const defaultCourses: Omit<Course, 'id' | 'createdAt'>[] = [
+      { 
+        name: 'Administração', 
+        code: 'ADM', 
+        description: 'Curso de Administração com ênfase em gestão de negócios e empreendedorismo',
+        duration: 48,
+        coordinator: 'Dra. Ana Silva',
+        price: 799.90,
+        active: true
+      },
+      { 
+        name: 'Engenharia Civil', 
+        code: 'ENG-CIV', 
+        description: 'Engenharia Civil com foco em construção sustentável e projetos urbanos',
+        duration: 60,
+        coordinator: 'Dr. Carlos Oliveira',
+        price: 1299.90,
+        active: true
+      },
+      { 
+        name: 'Direito', 
+        code: 'DIR', 
+        description: 'Curso de Direito com ênfase em Direito Digital e novas tecnologias',
+        duration: 60,
+        coordinator: 'Dra. Patrícia Mendes',
+        price: 1199.90,
+        active: true
+      },
+      { 
+        name: 'Ciência da Computação', 
+        code: 'CC', 
+        description: 'Ciência da Computação com foco em desenvolvimento de software e IA',
+        duration: 48,
+        coordinator: 'Dr. Bruno Costa',
+        price: 999.90,
+        active: true
+      },
+      { 
+        name: 'Medicina', 
+        code: 'MED', 
+        description: 'Curso de Medicina com ênfase em saúde pública e tecnologias médicas',
+        duration: 72,
+        coordinator: 'Dra. Márcia Santos',
+        price: 5999.90,
+        active: true
+      }
+    ];
+    
+    for (const course of defaultCourses) {
+      const createdCourse = await this.createCourse(course);
+      
+      // Add shifts for each course
+      const shifts = [
+        { courseId: createdCourse.id, name: 'Manhã', startTime: '08:00', endTime: '12:00', weekdays: 'seg,ter,qua,qui,sex', active: true },
+        { courseId: createdCourse.id, name: 'Tarde', startTime: '13:30', endTime: '17:30', weekdays: 'seg,ter,qua,qui,sex', active: true },
+        { courseId: createdCourse.id, name: 'Noite', startTime: '19:00', endTime: '22:30', weekdays: 'seg,ter,qua,qui,sex', active: true }
+      ];
+      
+      for (const shift of shifts) {
+        await this.createCourseShift(shift);
+      }
+      
+      // Add modalities for each course
+      const modalities = [
+        { courseId: createdCourse.id, name: 'Presencial', description: 'Aulas totalmente presenciais', active: true },
+        { courseId: createdCourse.id, name: 'Semipresencial', description: 'Aulas presenciais e online', active: true },
+        { courseId: createdCourse.id, name: 'EAD', description: 'Ensino à distância com encontros online', active: true }
+      ];
+      
+      for (const modality of modalities) {
+        await this.createCourseModality(modality);
+      }
+    }
   }
 }
 
